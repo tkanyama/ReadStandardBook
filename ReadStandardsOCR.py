@@ -179,25 +179,83 @@ class PdfPage2Text():
                     lang='jpn+eng',
                     builder=pyocr.builders.TextBuilder(tesseract_layout=6)
                     )
-                
                 print(i+1)
-                    
+                
                 pagen = stpage + i
                 pageNo.append(pagen)
 
-                node = tagger.parseToNode(texts)
+                lines = texts.splitlines()
+                pmax = len(lines)
+                # lastLine = lines[len(lines)-1]
+                # pn = lastLine.replace(" ","").replace("\n","")
+                # if isint(pn):
+                #     pageNo.append(pn)
+                texts2 = ""
+                j = 0
+                for line in lines:
+                    j += 1
+                    if j> 1 and i<pmax:
+                        line2 = ""
+                        sflag = False
+                        for k in range(len(line)):
+                            c = line[k]
+                            if sflag:
+                                if c != " ":
+                                    line2 += c
+                                    sflag = False
+                                #end if
+                            else:
+                                if c == " ":
+                                    line2 += c
+                                    sflag = True
+                                else:
+                                    line2 += c
+                                #end if
+                            #end if
+                        #next
+                        texts2 += line2.replace("|","")
+                    # end if
+                #next
+
+                node = tagger.parseToNode(texts2)
                 word_list=[]
                 while node:
                     word_type = node.feature.split(',')[0]
+                    if word_type in ["助詞"]:
+                        if node.surface == "の":
+                            word_list.append(node.surface)
+                        #end if
+                    #end if
                     if word_type in ["名詞",'代名詞']:
                         word_list.append(node.surface)
                     #end if
                     node=node.next
                 #end while
-                word_chain=' '.join(word_list)
-                pageText.append(texts)
+                word_chain=''.join(word_list)
+                pageText.append(texts2)
                 pageResultData.append(word_chain)
                 pdfKind.append(kind)
+
+
+
+                # print(i+1)
+                    
+                # pagen = stpage + i
+                # pageNo.append(pagen)
+
+                # node = tagger.parseToNode(texts)
+                # word_list=[]
+                # while node:
+                #     word_type = node.feature.split(',')[0]
+                #     if word_type in ["名詞",'代名詞']:
+                #         word_list.append(node.surface)
+                #     #end if
+                #     node=node.next
+                # #end while
+                # word_chain=' '.join(word_list)
+                # pageText.append(texts)
+                # pageResultData.append(word_chain)
+                # pdfKind.append(kind)
 
 
         
@@ -255,7 +313,7 @@ class PdfPage2Text():
                 interpreter = PDFPageInterpreter(resourceManager, device)
 
                 pageI = 0
-                        
+                pn2 = 0
                 for page in PDFPage.get_pages(fp):
                     pageI += 1
                     print("page={}:".format(pageI), end="")
@@ -272,21 +330,45 @@ class PdfPage2Text():
                         #end if
                     #next
                     lines = texts.splitlines()
-                    lastLine = lines[len(lines)-1]
-                    pn = lastLine.replace(" ","").replace("\n","")
-                    if isint(pn):
-                        pageNo.append(pn)
+                    pmax = len(lines)
+                    if pageI == 1:
+                        lastLine = lines[len(lines)-1]
+                        pn = lastLine.replace(" ","").replace("\n","")
+                        if isint(pn):
+                            pn2 = int(pn)
+                        else:
+                            pn2 = 1
+                        #end if
+                    else:
+                        pn2 += 1
+                    #end id
 
-                    node = tagger.parseToNode(texts)
+                    pageNo.append(pn2)
+                    
+                    texts2 = ""
+                    i = 0
+                    for line in lines:
+                        i += 1
+                        if i> 1 and i<pmax:
+                            texts2 += line
+                        # end if
+                    #next
+
+                    node = tagger.parseToNode(texts2)
                     word_list=[]
                     while node:
                         word_type = node.feature.split(',')[0]
+                        if word_type in ["助詞"]:
+                            if node.surface == "の":
+                                word_list.append(node.surface)
+                            #end if
+                        #end if
                         if word_type in ["名詞",'代名詞']:
                             word_list.append(node.surface)
                         node=node.next
                     #end while
-                    word_chain=' '.join(word_list)
-                    pageText.append(texts)
+                    word_chain=''.join(word_list)
+                    pageText.append(texts2)
                     pageResultData.append(word_chain)
                     pdfKind.append(kind)
                 #next
@@ -320,6 +402,7 @@ def main():
     BookName = os.path.basename(inputRCPath)
     
     if len(folderfile)>0:
+        time_sta = time.time()  # 開始時刻の記録
         PT = PdfPage2Text()
         FMA = FMRestAPI()
 
@@ -382,8 +465,15 @@ def main():
                 #end if
             #end if
         #next
+    t1 = time.time() - time_sta
+    print("time = {} sec".format(t1))
     #end if
 
 if __name__ == '__main__':
     main()
                 
+"""
+自宅からのVPN接続環境において、
+テキストを含むPDFの場合、60ページの読み込みに約90秒,610ページの読み込みに585秒
+スキャンデータのPDFの場合、60ページの読み込みに約280秒
+"""
