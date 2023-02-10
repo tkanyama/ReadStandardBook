@@ -435,7 +435,8 @@ def main():
                             "テキスト固有名詞":word_chain,
                             "基準文書の名称":BookName,
                             "章の名称":ChapterName,
-                            "pdfの種類":kind
+                            "pdfの種類":kind,
+                            "最初のページ":pageNo[0]
                         }
                         Id = FMA.insertrRecord(data)
                         if Id>0 :
