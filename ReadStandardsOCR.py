@@ -42,6 +42,8 @@ import pyocr
 import re
 from pathlib import Path
 
+import cv2
+
 #============================================================================
 #  整数を表しているかどうかを判定する関数
 #============================================================================
@@ -116,7 +118,7 @@ class PdfPage2Text():
         
         
 
-    def OCRFile(self, filename):
+    def OCRFile(self, filename, bitflag=False):
         if filename =="" :
             return False
         #end if
@@ -133,9 +135,6 @@ class PdfPage2Text():
         # print(text)
         pdfFileName = filename
         dpi0 = 300      # 数値を読み取る場合のDPI
-        dpi1 = 300      # 結果出力時に使用するDPI
-        # dpi2 = 300      # ページのタイトル（日本語）を読み取る場合のDPI
-        # Cdpi = dpi0 / dpi1      # 結果出力時に使用するDPIの比率
 
         fname = Path(pdfFileName).stem
         cname = fname[:fname.find("_")]
@@ -144,11 +143,7 @@ class PdfPage2Text():
 
         if isint(pn):
             stpage = int(pn)
-
-
-        # LineW = 2
-        # Tx = int(10 * dpi1 / 25.4)
-        # Ty = int(10 * dpi1 / 25.4)
+        #end if
 
         pageText = []
         pageResultData = []
@@ -167,20 +162,36 @@ class PdfPage2Text():
             #end with
             images = convert_from_path(pdfFileName,dpi=dpi0,first_page=1,last_page=PageMax)
                 
-            # for i in range(PageMax):
-            #     images = convert_from_path(pdfFileName,dpi=dpi2,first_page=i+1,last_page=i+1)
             i = -1
             for image in images:
                 i += 1
-                # image = images[0]
-                # img = np.array(image)
-                texts = tool.image_to_string(
-                    image,
-                    lang='jpn+eng',
-                    builder=pyocr.builders.TextBuilder(tesseract_layout=6)
+                
+                if bitflag:
+                    # 2値画像に変換に変換する場合
+                    #データ形式をnumpy配列に変換
+                    img = np.array(image)
+                    # モノクロ・グレースケール画像へ変換（2値化前の画像処理）
+                    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    # 2値化（Binarization）：白（1）黒（0）のシンプルな2値画像に変換
+                    retval, img_binary = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+                    # データ形式をCV2形式変換
+                    image2 = Image.fromarray(img_binary)
+                    texts = tool.image_to_string(
+                        image2,
+                        lang='jpn+eng',
+                        builder=pyocr.builders.TextBuilder(tesseract_layout=6)
                     )
+                else:
+                    texts = tool.image_to_string(
+                        image,
+                        lang='jpn+eng',
+                        builder=pyocr.builders.TextBuilder(tesseract_layout=6)
+                    )
+                #end if
+
                 print(i+1)
                 
+                # print (texts)
                 pagen = stpage + i
                 pageNo.append(pagen)
 
@@ -235,35 +246,7 @@ class PdfPage2Text():
                 pageText.append(texts2)
                 pageResultData.append(word_chain)
                 pdfKind.append(kind)
-
-
-
-                # print(i+1)
-                    
-                # pagen = stpage + i
-                # pageNo.append(pagen)
-
-                # node = tagger.parseToNode(texts)
-                # word_list=[]
-                # while node:
-                #     word_type = node.feature.split(',')[0]
-                #     if word_type in ["名詞",'代名詞']:
-                #         word_list.append(node.surface)
-                #     #end if
-                #     node=node.next
-                # #end while
-                # word_chain=' '.join(word_list)
-                # pageText.append(texts)
-                # pageResultData.append(word_chain)
-                # pdfKind.append(kind)
-
-
-        
             #next
-
-                
-            #end with
-
         except OSError as e:
             print(e)
             logging.exception(sys.exc_info())#エラーをlog.txtに書き込む
@@ -325,7 +308,7 @@ class PdfPage2Text():
                     for lt in layout:
                         if isinstance(lt, LTTextBoxHorizontal):
                             text = lt.get_text()
-                            print(text)
+                            # print(text)
                             texts += text
                         #end if
                     #next
@@ -413,7 +396,7 @@ def main():
                 fname = Path(file).stem
                 ChapterName = fname[:fname.find("_")]        
                 ChapterNames.append(ChapterName)
-                flag,pageNo, pageText, pageResultData, pdfKind  = PT.OCRFile(inputRCPath + "/" +file)
+                flag,pageNo, pageText, pageResultData, pdfKind  = PT.OCRFile(inputRCPath + "/" +file,bitflag=False)
             else:
                 ChapterName = file.replace(".pdf","").replace(".PDF","")
                 ChapterNames.append(ChapterName)
@@ -475,6 +458,11 @@ if __name__ == '__main__':
                 
 """
 自宅からのVPN接続環境において、
-テキストを含むPDFの場合、60ページの読み込みに約90秒,610ページの読み込みに585秒
+テキストを含むPDFの場合、60ページの読み込みに約90秒,610ページの読み込みに約585秒
 スキャンデータのPDFの場合、60ページの読み込みに約280秒
+
+所内の有線LAN接続環境において、
+テキストを含むPDFの場合、60ページの読み込みに約21秒,610ページの読み込みに約207秒
+スキャンデータのPDFの場合、60ページの読み込みに約243秒
+イメージを二値化すると321秒
 """
