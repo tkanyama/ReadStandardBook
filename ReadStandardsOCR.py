@@ -66,7 +66,8 @@ class FMRestAPI():
         f.close()
         USER = datajson['USER']
         PASSWORD = datajson['PASSWORD']
-        self.serverAddress = "192.168.0.171"
+        self.serverAddress = datajson['SERVER']
+        # self.serverAddress = "192.168.0.171"
         self.databaseName = "基準書検索"
         self.layoutName = "ページ情報"
     
@@ -190,7 +191,7 @@ class PdfPage2Text():
                 #end if
 
                 print(i+1)
-                
+                texts = texts.replace(" ","")
                 # print (texts)
                 pagen = stpage + i
                 pageNo.append(pagen)
@@ -465,4 +466,6 @@ if __name__ == '__main__':
 テキストを含むPDFの場合、60ページの読み込みに約21秒,610ページの読み込みに約207秒
 スキャンデータのPDFの場合、60ページの読み込みに約243秒
 イメージを二値化すると321秒
+tesse data をbestに入れ替えると345秒（二値化なし）精度は高い
+tesse data をbestに入れ替えると511秒（二値化あり）精度は二値化なしとほとんど変わらず
 """
