@@ -66,8 +66,8 @@ class FMRestAPI():
         f.close()
         USER = datajson['USER']
         PASSWORD = datajson['PASSWORD']
-        # self.serverAddress = datajson['SERVER']
-        self.serverAddress = "192.168.0.171"
+        self.serverAddress = datajson['SERVER']
+        # self.serverAddress = "192.168.0.171"
         self.databaseName = "基準書検索"
         self.layoutName = "ページ情報"
     
@@ -291,10 +291,6 @@ class PdfPage2Text():
         return True, pageNo, pageText, pageResultData, pdfKind
     
     # end def
-
-
-
-
 
 
     def LoadFile(self, filename):
