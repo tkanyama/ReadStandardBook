@@ -403,7 +403,8 @@ class PdfPage2Text():
 #end class
 
 def main():
-    
+    if not os.path.isdir("./pdf"):
+        os.mkdir("./pdf")
     dir = os.getcwd()
     inputRCPath = filedialog.askdirectory(initialdir=dir)
     # inputRCPath = "/Users/kanyama/VS Code/MeCabPDF/2020年版黄色本（スキャン）"
