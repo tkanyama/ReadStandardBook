@@ -66,8 +66,8 @@ class FMRestAPI():
         f.close()
         USER = datajson['USER']
         PASSWORD = datajson['PASSWORD']
-        self.serverAddress = datajson['SERVER']
-        # self.serverAddress = "192.168.0.171"
+        # self.serverAddress = datajson['SERVER']
+        self.serverAddress = "192.168.0.171"
         self.databaseName = "基準書検索"
         self.layoutName = "ページ情報"
     
@@ -96,6 +96,18 @@ class FMRestAPI():
         result = self.fms.upload_container(Id, fieldName, pdfFileIO)
         return result
     
+    def findRecordN(self, fname, chaptername):
+        find_query = [{
+            '基準文書の名称': fname,
+            '章の名称': chaptername
+            }]
+        try:
+            foundset = self.fms.find(find_query)
+            nn= foundset.info["foundCount"]
+        except:
+            nn = 0
+        #end try
+        return nn
 #end class
 
 
@@ -161,92 +173,111 @@ class PdfPage2Text():
                 PageMax = len(reader.pages)
                 input.close()
             #end with
-            images = convert_from_path(pdfFileName,dpi=dpi0,first_page=1,last_page=PageMax)
-                
+
+            # for i in range(1,pmax+pn-1,pn):
+            #     stpage = i
+            #     edpage = stpage + pn -1
+            #     if edpage >= pmax:
+            #         edpage = pmax
+
+            pn2 = 10
             i = -1
-            for image in images:
-                i += 1
-                
-                if bitflag:
-                    # 2値画像に変換に変換する場合
-                    #データ形式をnumpy配列に変換
-                    img = np.array(image)
-                    # モノクロ・グレースケール画像へ変換（2値化前の画像処理）
-                    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                    # 2値化（Binarization）：白（1）黒（0）のシンプルな2値画像に変換
-                    retval, img_binary = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-                    # データ形式をCV2形式変換
-                    image2 = Image.fromarray(img_binary)
-                    texts = tool.image_to_string(
-                        image2,
-                        lang='jpn+eng',
-                        builder=pyocr.builders.TextBuilder(tesseract_layout=6)
-                    )
-                else:
-                    texts = tool.image_to_string(
-                        image,
-                        lang='jpn+eng',
-                        builder=pyocr.builders.TextBuilder(tesseract_layout=6)
-                    )
+            for i2 in range(1,PageMax+pn2-1, pn2):
+                st1 = i2
+                ed1 = st1 + pn2 -1
+                if ed1 >= PageMax:
+                    ed1 = PageMax
                 #end if
 
-                print(i+1)
-                texts = texts.replace(" ","")
-                # print (texts)
-                pagen = stpage + i
-                pageNo.append(pagen)
+                # images = convert_from_path(pdfFileName,dpi=dpi0,first_page=1,last_page=PageMax)
+                images = convert_from_path(pdfFileName,dpi=dpi0,first_page=st1,last_page=ed1)
+                    
+                # i = -1
+                for image in images:
+                    i += 1
+                    
+                    if bitflag:
+                        # 2値画像に変換に変換する場合
+                        #データ形式をnumpy配列に変換
+                        img = np.array(image)
+                        # モノクロ・グレースケール画像へ変換（2値化前の画像処理）
+                        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                        # 2値化（Binarization）：白（1）黒（0）のシンプルな2値画像に変換
+                        retval, img_binary = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+                        # データ形式をCV2形式変換
+                        image2 = Image.fromarray(img_binary)
+                        texts = tool.image_to_string(
+                            image2,
+                            lang='jpn+eng',
+                            builder=pyocr.builders.TextBuilder(tesseract_layout=6)
+                        )
+                    else:
+                        texts = tool.image_to_string(
+                            image,
+                            lang='jpn+eng',
+                            builder=pyocr.builders.TextBuilder(tesseract_layout=6)
+                        )
+                    #end if
 
-                lines = texts.splitlines()
-                pmax = len(lines)
-                # lastLine = lines[len(lines)-1]
-                # pn = lastLine.replace(" ","").replace("\n","")
-                # if isint(pn):
-                #     pageNo.append(pn)
-                texts2 = ""
-                j = 0
-                for line in lines:
-                    j += 1
-                    if j> 1 and i<pmax:
-                        line2 = ""
-                        sflag = False
-                        for k in range(len(line)):
-                            c = line[k]
-                            if sflag:
-                                if c != " ":
-                                    line2 += c
-                                    sflag = False
-                                #end if
-                            else:
-                                if c == " ":
-                                    line2 += c
-                                    sflag = True
+                    # print(i+1)
+                    texts = texts.replace(" ","")
+                    # print (texts)
+                    pagen = stpage + i
+                    print(pagen) 
+                    pageNo.append(pagen)
+
+                    lines = texts.splitlines()
+                    pmax = len(lines)
+                    # lastLine = lines[len(lines)-1]
+                    # pn = lastLine.replace(" ","").replace("\n","")
+                    # if isint(pn):
+                    #     pageNo.append(pn)
+                    texts2 = ""
+                    j = 0
+                    for line in lines:
+                        j += 1
+                        if j> 1 and j<pmax:
+                            line2 = ""
+                            sflag = False
+                            for k in range(len(line)):
+                                c = line[k]
+                                if sflag:
+                                    if c != " ":
+                                        line2 += c
+                                        sflag = False
+                                    #end if
                                 else:
-                                    line2 += c
+                                    if c == " ":
+                                        line2 += c
+                                        sflag = True
+                                    else:
+                                        line2 += c
+                                    #end if
                                 #end if
-                            #end if
-                        #next
-                        texts2 += line2.replace("|","")
-                    # end if
-                #next
+                            #next
+                            texts2 += line2.replace("|","")
+                        # end if
+                    #next
 
-                node = tagger.parseToNode(texts2)
-                word_list=[]
-                while node:
-                    word_type = node.feature.split(',')[0]
-                    if word_type in ["助詞"]:
-                        if node.surface == "の":
+                    node = tagger.parseToNode(texts2)
+                    word_list=[]
+                    while node:
+                        word_type = node.feature.split(',')[0]
+                        if word_type in ["助詞"]:
+                            if node.surface == "の":
+                                word_list.append(node.surface)
+                            #end if
+                        #end if
+                        if word_type in ["名詞",'代名詞']:
                             word_list.append(node.surface)
                         #end if
-                    #end if
-                    if word_type in ["名詞",'代名詞']:
-                        word_list.append(node.surface)
-                    #end if
-                    node=node.next
-                #end while
-                word_chain=''.join(word_list)
-                pageText.append(texts2)
-                pageResultData.append(word_chain)
-                pdfKind.append(kind)
+                        node=node.next
+                    #end while
+                    word_chain=''.join(word_list)
+                    pageText.append(texts2)
+                    pageResultData.append(word_chain)
+                    pdfKind.append(kind)
+                #next
             #next
         except OSError as e:
             print(e)
@@ -381,6 +412,7 @@ def main():
     inputRCPath = filedialog.askdirectory(initialdir=dir)
     # inputRCPath = "/Users/kanyama/VS Code/MeCabPDF/2020年版黄色本（スキャン）"
     folderfile = os.listdir(inputRCPath)
+    folderfile.sort()
     print(folderfile)
     # BookName = os.path.basename(os.path.dirname(inputRCPath))
     BookName = os.path.basename(inputRCPath)
@@ -388,65 +420,81 @@ def main():
     if len(folderfile)>0:
         time_sta = time.time()  # 開始時刻の記録
         PT = PdfPage2Text()
-        FMA = FMRestAPI()
+        # FMA = FMRestAPI()
 
 
         ChapterNames = []
         for file in folderfile:
-            if file.find("_")>0:
-                fname = Path(file).stem
-                ChapterName = fname[:fname.find("_")]        
-                ChapterNames.append(ChapterName)
-                flag,pageNo, pageText, pageResultData, pdfKind  = PT.OCRFile(inputRCPath + "/" +file,bitflag=False)
-            else:
-                ChapterName = file.replace(".pdf","").replace(".PDF","")
-                ChapterNames.append(ChapterName)
-                flag,pageNo, pageText, pageResultData, pdfKind = PT.LoadFile(inputRCPath + "/" +file)
+            if file != ".DS_Store":
+                if file.find("_")>0:
+                    fname = Path(file).stem
+                    ChapterName = fname[:fname.find("_")]        
+                    ChapterNames.append(ChapterName)
+                    FMA = FMRestAPI()
+                    founddataN = FMA.findRecordN(BookName, ChapterName)
+                    if founddataN ==0 :
+                        flag,pageNo, pageText, pageResultData, pdfKind  = PT.OCRFile(inputRCPath + "/" +file,bitflag=False)
+                    else:
+                        flag = False
+                    #end if
+                else:
+                    ChapterName = file.replace(".pdf","").replace(".PDF","")
+                    ChapterNames.append(ChapterName)
+                    FMA = FMRestAPI()
+                    founddataN = FMA.findRecordN(fname, ChapterName)
+                    
+                    if founddataN ==0 :
+                        flag,pageNo, pageText, pageResultData, pdfKind = PT.LoadFile(inputRCPath + "/" +file)
+                    else:
+                        flag = False
+                    #end if
 
-            if flag:
-                n = len(pageText)
-                if n>0 :
-                    pageId = []
-                    for i in range(n):
-                        print(pageText[i])
-                        pn = pageNo[i]
-                        texts = pageText[i]
-                        word_chain = pageResultData[i]
-                        kind = pdfKind[i]
-                        data = {
-                            "ページ番号":pn,
-                            "テキスト全文":texts,
-                            "テキスト固有名詞":word_chain,
-                            "基準文書の名称":BookName,
-                            "章の名称":ChapterName,
-                            "pdfの種類":kind,
-                            "最初のページ":pageNo[0]
-                        }
-                        Id = FMA.insertrRecord(data)
-                        if Id>0 :
-                            pageId.append(Id)
-                        #end if
+                if flag:
+                    n = len(pageText)
+                    if n>0 :
+                        FMA = FMRestAPI()
+                        pageId = []
+                        for i in range(n):
+                            print(pageText[i])
+                            pn = pageNo[i]
+                            texts = pageText[i]
+                            word_chain = pageResultData[i]
+                            kind = pdfKind[i]
+                            data = {
+                                "ページ番号":pn,
+                                "テキスト全文":texts,
+                                "テキスト固有名詞":word_chain,
+                                "基準文書の名称":BookName,
+                                "章の名称":ChapterName,
+                                "pdfの種類":kind,
+                                "最初のページ":pageNo[0]
+                            }
+                            Id = FMA.insertrRecord(data)
+                            if Id>0 :
+                                pageId.append(Id)
+                            #end if
 
-                        with open(inputRCPath + "/" +file,'rb') as f:
-                            pdfReader = PdfReader(f)
-                            file_object = pdfReader.pages[i]
-                            
-                            pdf_file = "./pdf/pdftmp.pdf"
-                            with open(pdf_file,'wb') as f2: #(10)
-                                pdfWriter1 = PdfWriter(f2)
-                                pdfWriter1.add_page(file_object) #(11)
-                                pdfWriter1.write(f2)
-                                f2.close()
+                            with open(inputRCPath + "/" +file,'rb') as f:
+                                pdfReader = PdfReader(f)
+                                file_object = pdfReader.pages[i]
+                                
+                                pdf_file = "./pdf/pdftmp.pdf"
+                                with open(pdf_file,'wb') as f2: #(10)
+                                    pdfWriter1 = PdfWriter(f2)
+                                    pdfWriter1.add_page(file_object) #(11)
+                                    pdfWriter1.write(f2)
+                                    f2.close()
 
-                            f.close()
-                        #end with
+                                f.close()
+                            #end with
 
-                        fieldName = "pdf"
-                        res = FMA.insertPdf(Id, fieldName, pdf_file)
+                            fieldName = "pdf"
+                            res = FMA.insertPdf(Id, fieldName, pdf_file)
 
-                    #next
-                    if os.path.isfile(pdf_file):
-                        os.remove(pdf_file)
+                        #next
+                        if os.path.isfile(pdf_file):
+                            os.remove(pdf_file)
+                    #end if
                 #end if
             #end if
         #next
