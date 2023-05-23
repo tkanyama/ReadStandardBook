@@ -21,7 +21,8 @@ from pdfminer.layout import LAParams, LTTextContainer, LTContainer, LTTextBox, L
 # from reportlab.lib.units import mm
 
 # pip install PyPDF2
-from PyPDF2 import PdfReader, PdfWriter, PdfFileReader, PdfFileWriter # 名前が上とかぶるので別名を使用
+# from PyPDF2 import PdfReader, PdfWriter, PdfFileReader, PdfFileWriter # 名前が上とかぶるので別名を使用
+from pypdf import PdfReader, PdfWriter
 
 # その他のimport
 import os,time
