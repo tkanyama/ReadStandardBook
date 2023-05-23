@@ -59,7 +59,13 @@ def isint(s):
 
 
 class FMRestAPI():
+    #
+    # python-fmrestを用いたRestAPI用のクラス
+    #
     def __init__(self):
+        # インスタンスの初期化
+        #   ファイルメーカーのログインID,パスワード, サーバーのIPアドレスを「init2.json」から読み込む
+        
         path = os.path.expanduser('~/init2.json')
         f = open(path, 'r')
         datajson = json.loads(f.read())
@@ -82,19 +88,32 @@ class FMRestAPI():
         self.fms.login()
 
     def insertrRecord(self, jsondata):
+        # 新規レコードの挿入
+        # jsondata = {
+        #             "ページ番号":pn,
+        #             "テキスト全文":texts,
+        #             "テキスト固有名詞":word_chain,
+        #             "基準文書の名称":BookName,
+        #             "章の名称":ChapterName,
+        #             "pdfの種類":kind,
+        #             "最初のページ":pageNo[0]
+        #         }
+
         res = self.fms.create_record(jsondata)
         print(res)
         return res
     #end def
 
     def insertPdf(self, Id, fieldName, pdfFile):
+        # フィールドfieldName（オブジェクト）にPDFを挿入
         with open(pdfFile, 'rb') as pdf_pf:
             result = self.fms.upload_container(Id, fieldName, pdf_pf)
+            pdf_pf.close()
         return result
     
-    def insertPdf2(self, Id, fieldName, pdfFileIO):
-        result = self.fms.upload_container(Id, fieldName, pdfFileIO)
-        return result
+    # def insertPdf2(self, Id, fieldName, pdfFileIO):
+    #     result = self.fms.upload_container(Id, fieldName, pdfFileIO)
+    #     return result
     
     def findRecordN(self, fname, chaptername):
         find_query = [{
@@ -105,6 +124,7 @@ class FMRestAPI():
             foundset = self.fms.find(find_query)
             nn= foundset.info["foundCount"]
         except:
+            # レコードがない場合はエラーとなるので例外処理を行う。
             nn = 0
         #end try
         return nn
@@ -112,6 +132,9 @@ class FMRestAPI():
 
 
 class PdfPage2Text():
+    #
+    #   PDFからテキストを抽出するクラス
+    #
     def __init__(self):
         # 源真ゴシック等幅フォント
         # GEN_SHIN_GOTHIC_MEDIUM_TTF = "/Library/Fonts/GenShinGothic-Monospace-Medium.ttf"
@@ -132,11 +155,15 @@ class PdfPage2Text():
         
 
     def OCRFile(self, filename, bitflag=False):
+        #
+        #   PDFがスキャンデータの場合に使用する関数
+        #       OCRエンジン(tesseract)を使用
+        #
         if filename =="" :
             return False
         #end if
 
-        pdf_file = filename
+        # pdf_file = filename
 
         #OCRエンジンを取得する
         tools = pyocr.get_available_tools()
@@ -237,6 +264,7 @@ class PdfPage2Text():
                     for line in lines:
                         j += 1
                         if j> 1 and j<pmax:
+                            # １行目と最終行は含めない
                             line2 = ""
                             sflag = False
                             for k in range(len(line)):
@@ -403,52 +431,87 @@ class PdfPage2Text():
 #end class
 
 def main():
+    #
+    #   メインルーチン
+    #
+
+    # 「./pdf」フォルダーがない場合は作成する
     if not os.path.isdir("./pdf"):
         os.mkdir("./pdf")
+    
+    # PDFのあるフォルダーをダイアログで選択
     dir = os.getcwd()
     inputRCPath = filedialog.askdirectory(initialdir=dir)
     # inputRCPath = "/Users/kanyama/VS Code/MeCabPDF/2020年版黄色本（スキャン）"
+
+    # フォルダー内にあるPDFファイルのリストを取得
     folderfile = os.listdir(inputRCPath)
+
+    # リストをソート
     folderfile.sort()
     print(folderfile)
-    # BookName = os.path.basename(os.path.dirname(inputRCPath))
+
+    # フォルダー名を基準書の名称とする
     BookName = os.path.basename(inputRCPath)
     
     if len(folderfile)>0:
         time_sta = time.time()  # 開始時刻の記録
+
+        # PdfPage2Texのインスタンスを作成
         PT = PdfPage2Text()
-        # FMA = FMRestAPI()
 
-
-        ChapterNames = []
+        ChapterNames = []   # 章の名称リスト
         for file in folderfile:
-            if file != ".DS_Store":
+            if file != ".DS_Store":     # .DS_Storeは読み飛ばす
+                
                 if file.find("_")>0:
+                    # ファイル名に"_"が含まれる場合はスキャンPDFと判断
                     fname = Path(file).stem
+
+                    # "_"の直前までのファイル名を章の名前とする。
                     ChapterName = fname[:fname.find("_")]        
                     ChapterNames.append(ChapterName)
+
+                    # FMRestAPIのインスタンスを作成
                     FMA = FMRestAPI()
+
+                    # 同じ名前の基準書、章名があるどうかをチェック
                     founddataN = FMA.findRecordN(BookName, ChapterName)
+
+                    # 同じ章名がなければOCRを実行、有ればそのファイルは無視
                     if founddataN ==0 :
                         flag,pageNo, pageText, pageResultData, pdfKind  = PT.OCRFile(inputRCPath + "/" +file,bitflag=False)
                     else:
                         flag = False
                     #end if
                 else:
+                    # ファイル名に"_"が無い場合はテキストを含むPDFと判断
+
+                    # 拡張子をとったファイル名を章の名前とする。
                     ChapterName = file.replace(".pdf","").replace(".PDF","")
                     ChapterNames.append(ChapterName)
+
+                    # FMRestAPIのインスタンスを作成
                     FMA = FMRestAPI()
+                    # 同じ名前の基準書、章名があるどうかをチェック
                     founddataN = FMA.findRecordN(fname, ChapterName)
-                    
+
+                    # 同じ章名がなければOCRを実行、有ればそのファイルは無視
                     if founddataN ==0 :
                         flag,pageNo, pageText, pageResultData, pdfKind = PT.LoadFile(inputRCPath + "/" +file)
                     else:
                         flag = False
                     #end if
 
-                if flag:
+                if flag:    # flag : テキストの抽出が成功した場合はTrue
                     n = len(pageText)
                     if n>0 :
+                        # FMRestAPIのインスタンスを作成
+                        """
+                        OCRでテキストの抽出に時間がかかる場合がある。
+                        その間に上記のFMRestAPIのインスタンスの有効期限が切れてしまうので、
+                        新たにインスタンスを作成する必要がある。
+                        """
                         FMA = FMRestAPI()
                         pageId = []
                         for i in range(n):
@@ -475,6 +538,7 @@ def main():
                                 pdfReader = PdfReader(f)
                                 file_object = pdfReader.pages[i]
                                 
+                                # 該当するページをtmpファイル"./pdf/pdftmp.pdf"ファイルに書き出す
                                 pdf_file = "./pdf/pdftmp.pdf"
                                 with open(pdf_file,'wb') as f2: #(10)
                                     pdfWriter1 = PdfWriter(f2)
@@ -486,9 +550,11 @@ def main():
                             #end with
 
                             fieldName = "pdf"
+                            # pdfファイルをデータベースに挿入する
                             res = FMA.insertPdf(Id, fieldName, pdf_file)
 
                         #next
+                        # tmpファイルを削除する
                         if os.path.isfile(pdf_file):
                             os.remove(pdf_file)
                     #end if
