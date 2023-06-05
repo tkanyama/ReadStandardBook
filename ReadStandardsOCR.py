@@ -334,11 +334,12 @@ class PdfPage2Text():
         resourceManager = PDFResourceManager()
         # PDFから単語を取得するためのデバイス
         laparams = LAParams()               # パラメータインスタンス
-        laparams.boxes_flow = None          # -1.0（水平位置のみが重要）から+1.0（垂直位置のみが重要）default 0.5
+        laparams.boxes_flow = 0.5          # -1.0（水平位置のみが重要）から+1.0（垂直位置のみが重要）default 0.5
         laparams.word_margin = 0.1          # default 0.1
         laparams.char_margin = 2.0          # default 2.0
         laparams.line_margin = 0.5            # default 0.5
         device = PDFPageAggregator(resourceManager, laparams=laparams)
+        # device = PDFPageAggregator(resourceManager)
 
         pageText = []
         pageResultData = []
@@ -364,6 +365,8 @@ class PdfPage2Text():
                     ResultData = []
                     for lt in layout:
                         if isinstance(lt, LTTextBoxHorizontal):
+                        # if isinstance(lt, LTChar):    
+                        # if isinstance(lt, LTTextLine):    
                             text = lt.get_text()
                             # print(text)
                             texts += text
@@ -495,7 +498,7 @@ def main():
                     # FMRestAPIのインスタンスを作成
                     FMA = FMRestAPI()
                     # 同じ名前の基準書、章名があるどうかをチェック
-                    founddataN = FMA.findRecordN(fname, ChapterName)
+                    founddataN = FMA.findRecordN(BookName, ChapterName)
 
                     # 同じ章名がなければOCRを実行、有ればそのファイルは無視
                     if founddataN ==0 :
